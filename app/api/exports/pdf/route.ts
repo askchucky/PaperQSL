@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { generateAvery5160Labels } from '@/lib/pdf-labels'
 import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
+import { Buffer } from 'buffer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,7 +96,11 @@ export async function POST(request: NextRequest) {
 
     // Upload to Vercel Blob
     const filename = `labels-${new Date().toISOString().split('T')[0]}-${Date.now()}.pdf`
-    const blob = await put(filename, pdfBytes, {
+    
+    // pdf-lib returns Uint8Array; Vercel Blob expects PutBody (Buffer/Blob/etc.)
+    const pdfBody = Buffer.from(pdfBytes)
+    
+    const blob = await put(filename, pdfBody, {
       access: 'public',
       contentType: 'application/pdf',
       token: process.env.BLOB_READ_WRITE_TOKEN,
