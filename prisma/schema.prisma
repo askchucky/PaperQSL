@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  qsos      QSO[]
+  stations  Station[]
+  exports   Export[]
+  qrzApiKey String?  // Encrypted QRZ API key
+
+  @@index([clerkId])
+}
+
+model QSO {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  callsign  String
+  date      DateTime
+  time      String?
+  band      String?
+  mode      String?
+  freq      String?
+  rstSent   String?
+  rstRcvd   String?
+  qth       String?
+  comment   String?
+  adifData  Json?    // Store full ADIF record as JSON
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, callsign])
+  @@index([userId, date])
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  callsign  String
+  qsoCount  Int      @default(0)
+
+  // Eligibility
+  eligibility String @default("Unknown") // Eligible | Not Eligible | Unknown
+  eligibilityOverride Boolean @default(false) // True if user manually set eligibility
+
+  // Address
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  addressSource String? // QRZ | HamQTH | Manual
+  lastVerifiedAt DateTime?
+
+  // QSL Lifecycle
+  sentAt      DateTime?
+  sentMethod  String? // Direct | SASE
+  receivedAt  DateTime?
+  notes       String?
+  status      String? // pending | sent | received | n/a
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, callsign])
+  @@index([userId, eligibility])
+  @@index([userId, status])
+}
+
+model Export {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // CSV | PDF
+  filename  String
+  blobUrl   String   // Vercel Blob URL
+  filters   Json?    // Store export filters as JSON
+  recordCount Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

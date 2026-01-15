@@ -1,0 +1,270 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { format } from 'date-fns'
+
+interface Station {
+  id: string
+  callsign: string
+  qsoCount: number
+  eligibility: string
+  addressLine1: string | null
+  sentAt: Date | null
+  receivedAt: Date | null
+  status: string | null
+}
+
+export default function StationsPage() {
+  const [stations, setStations] = useState<Station[]>([])
+  const [loading, setLoading] = useState(true)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
+  // Filters
+  const [search, setSearch] = useState('')
+  const [eligibilityFilter, setEligibilityFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [missingAddress, setMissingAddress] = useState(false)
+  const [notSent, setNotSent] = useState(false)
+
+  const fetchStations = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '50',
+      })
+
+      if (search) params.append('search', search)
+      if (eligibilityFilter !== 'all') params.append('eligibility', eligibilityFilter)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (missingAddress) params.append('missingAddress', 'true')
+      if (notSent) params.append('notSent', 'true')
+
+      const response = await fetch(`/api/stations?${params}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setStations(data.stations)
+        setTotal(data.total)
+        setTotalPages(data.totalPages)
+      }
+    } catch (error) {
+      console.error('Error fetching stations:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStations()
+  }, [page, eligibilityFilter, statusFilter, missingAddress, notSent])
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page === 1) {
+        fetchStations()
+      } else {
+        setPage(1)
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const getEligibilityBadge = (eligibility: string) => {
+    const colors: Record<string, string> = {
+      Eligible: 'bg-green-100 text-green-800',
+      'Not Eligible': 'bg-red-100 text-red-800',
+      Unknown: 'bg-gray-100 text-gray-800',
+    }
+    return (
+      <span
+        className={`px-2 py-1 rounded text-xs font-semibold ${
+          colors[eligibility] || colors.Unknown
+        }`}
+      >
+        {eligibility}
+      </span>
+    )
+  }
+
+  const getStatusBadge = (status: string | null) => {
+    if (!status) return null
+    const colors: Record<string, string> = {
+      sent: 'bg-blue-100 text-blue-800',
+      received: 'bg-green-100 text-green-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      'n/a': 'bg-gray-100 text-gray-800',
+    }
+    return (
+      <span
+        className={`px-2 py-1 rounded text-xs font-semibold ${
+          colors[status] || colors['n/a']
+        }`}
+      >
+        {status}
+      </span>
+    )
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Stations</h1>
+        <div className="text-sm text-gray-600">
+          Total: {total} stations
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6 space-y-4">
+        <div className="flex gap-4 flex-wrap">
+          <input
+            type="text"
+            placeholder="Search callsign..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-4 py-2 border rounded flex-1 min-w-[200px]"
+          />
+
+          <select
+            value={eligibilityFilter}
+            onChange={(e) => setEligibilityFilter(e.target.value)}
+            className="px-4 py-2 border rounded"
+          >
+            <option value="all">All Eligibility</option>
+            <option value="Eligible">Eligible</option>
+            <option value="Not Eligible">Not Eligible</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border rounded"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="sent">Sent</option>
+            <option value="received">Received</option>
+            <option value="n/a">N/A</option>
+          </select>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={missingAddress}
+              onChange={(e) => setMissingAddress(e.target.checked)}
+            />
+            <span className="text-sm">Missing Address</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={notSent}
+              onChange={(e) => setNotSent(e.target.checked)}
+            />
+            <span className="text-sm">Not Sent</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center py-12">Loading...</div>
+      ) : stations.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          No stations found. Import an ADIF file to get started.
+        </div>
+      ) : (
+        <>
+          <div className="border rounded overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Callsign</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">QSOs</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Eligibility</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Address</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Sent</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Received</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {stations.map((station) => (
+                  <tr key={station.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono font-semibold">
+                      {station.callsign}
+                    </td>
+                    <td className="px-4 py-3">{station.qsoCount}</td>
+                    <td className="px-4 py-3">
+                      {getEligibilityBadge(station.eligibility)}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {station.addressLine1 ? (
+                        <span className="text-green-600">✓</span>
+                      ) : (
+                        <span className="text-red-600">✗</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {getStatusBadge(station.status)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {station.sentAt
+                        ? format(new Date(station.sentAt), 'MMM d, yyyy')
+                        : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {station.receivedAt
+                        ? format(new Date(station.receivedAt), 'MMM d, yyyy')
+                        : '-'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/app/stations/${encodeURIComponent(station.callsign)}`}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex justify-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 border rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="px-4 py-2">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-4 py-2 border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
