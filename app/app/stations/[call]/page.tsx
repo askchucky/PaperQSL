@@ -26,6 +26,7 @@ interface Station {
   qslManager: string | null
 }
 
+
 interface QSO {
   id: string
   date: Date
@@ -35,6 +36,18 @@ interface QSO {
   freq: string | null
   rstSent: string | null
   rstRcvd: string | null
+}
+
+function formatUtcTimeHHmmZ(time: string | null): string {
+  if (!time) return ''
+
+  // Accept inputs like "2124", "21:24", "2124Z", "21:24Z"
+  const digits = time.replace(/[^0-9]/g, '')
+  if (digits.length === 0) return ''
+
+  const padded = digits.padStart(4, '0').slice(0, 4)
+  // Display as HHmmZ (UTC)
+  return `${padded}Z`
 }
 
 export default function StationDetailPage() {
@@ -402,7 +415,7 @@ export default function StationDetailPage() {
                     <div className="flex justify-between">
                       <span>
                         {format(new Date(qso.date), 'MMM d, yyyy')}
-                        {qso.time && ` ${qso.time}`}
+                        {qso.time && ` ${formatUtcTimeHHmmZ(qso.time)}`}
                       </span>
                       <span className="text-gray-600">
                         {qso.band} {qso.mode}
