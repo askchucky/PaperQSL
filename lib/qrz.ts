@@ -26,11 +26,14 @@ interface QRZResponse {
   Error?: string
 }
 
-export async function qrzLogin(apiKey: string): Promise<string> {
-  // QRZ login endpoint
-  const response = await fetch(
-    `https://xmldata.qrz.com/xml/1.34/?username=${encodeURIComponent(apiKey)}&password=${encodeURIComponent(apiKey)}&agent=PaperQSL`
-  )
+export async function qrzLogin(username: string, password: string): Promise<string> {
+  // Build URL safely (handles special characters in username/password)
+  const url = new URL('https://xmldata.qrz.com/xml/current/')
+  url.searchParams.set('username', username)
+  url.searchParams.set('password', password)
+  url.searchParams.set('agent', 'PaperQSL')
+
+  const response = await fetch(url.toString(), { cache: 'no-store' })
 
   const text = await response.text()
   
@@ -50,9 +53,12 @@ export async function qrzLogin(apiKey: string): Promise<string> {
 }
 
 export async function qrzLookup(sessionKey: string, callsign: string): Promise<QRZResponse['Callsign'] | null> {
-  const response = await fetch(
-    `https://xmldata.qrz.com/xml/1.34/?s=${encodeURIComponent(sessionKey)}&callsign=${encodeURIComponent(callsign.toUpperCase())}`
-  )
+  // Build URL safely
+  const lookupUrl = new URL('https://xmldata.qrz.com/xml/current/')
+  lookupUrl.searchParams.set('s', sessionKey)
+  lookupUrl.searchParams.set('callsign', callsign.toUpperCase())
+
+  const response = await fetch(lookupUrl.toString(), { cache: 'no-store' })
 
   const text = await response.text()
 

@@ -11,7 +11,7 @@ A multi-user web application for managing paper QSL cards for ham radio operator
 - Track full QSL lifecycle (sent, received, status)
 - Export CSV files
 - Generate PDF mailing labels (Avery 5160)
-- Optional QRZ API integration
+- Optional QRZ XML integration (username/password)
 
 ## Tech Stack
 
@@ -39,7 +39,7 @@ Fill in:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: From Clerk dashboard
 - `CLERK_SECRET_KEY`: From Clerk dashboard
 - `BLOB_READ_WRITE_TOKEN`: From Vercel dashboard
-- `ENCRYPTION_KEY`: 32-byte hex string for encrypting QRZ API keys
+- `ENCRYPTION_KEY`: 32-byte hex string for encrypting QRZ credentials
 - `NEXT_PUBLIC_APP_URL`: Your app URL (http://localhost:3000 for dev)
 
 3. Set up the database:

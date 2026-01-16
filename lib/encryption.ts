@@ -1,4 +1,4 @@
-// Simple encryption/decryption for QRZ API keys
+// Simple encryption/decryption for QRZ credentials
 // Uses AES-256-GCM with a key derived from ENCRYPTION_KEY
 
 import crypto from 'crypto'

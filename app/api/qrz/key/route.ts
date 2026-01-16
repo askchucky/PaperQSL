@@ -12,19 +12,20 @@ export async function GET() {
 
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { qrzApiKey: true },
+      select: { qrzUsername: true, qrzPassword: true },
     })
 
-    if (!dbUser?.qrzApiKey) {
-      return NextResponse.json({ hasKey: false })
-    }
+    const configured = !!(dbUser?.qrzUsername && dbUser?.qrzPassword)
 
-    // Return that key exists but don't expose it
-    return NextResponse.json({ hasKey: true })
+    // Return that credentials exist and username (but never password)
+    return NextResponse.json({ 
+      configured,
+      username: configured ? dbUser.qrzUsername : null
+    })
   } catch (error) {
-    console.error('Error fetching QRZ key:', error)
+    console.error('Error fetching QRZ credentials:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch QRZ key status' },
+      { error: 'Failed to fetch QRZ credentials status' },
       { status: 500 }
     )
   }
@@ -38,25 +39,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { apiKey } = body
+    const { username, password } = body
 
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API key required' }, { status: 400 })
+    if (!username || !password) {
+      return NextResponse.json(
+        { error: 'Username and password are required' },
+        { status: 400 }
+      )
     }
 
-    // Encrypt and store
-    const encrypted = encrypt(apiKey)
+    if (!username.trim()) {
+      return NextResponse.json(
+        { error: 'Username cannot be empty' },
+        { status: 400 }
+      )
+    }
+
+    if (!password.trim()) {
+      return NextResponse.json(
+        { error: 'Password cannot be empty' },
+        { status: 400 }
+      )
+    }
+
+    // Encrypt password and store
+    const encryptedPassword = encrypt(password)
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { qrzApiKey: encrypted },
+      data: { 
+        qrzUsername: username.trim(),
+        qrzPassword: encryptedPassword,
+      },
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error saving QRZ key:', error)
+    console.error('Error saving QRZ credentials:', error)
     return NextResponse.json(
-      { error: 'Failed to save QRZ key' },
+      { error: 'Failed to save QRZ credentials' },
       { status: 500 }
     )
   }
@@ -71,14 +92,17 @@ export async function DELETE() {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { qrzApiKey: null },
+      data: { 
+        qrzUsername: null,
+        qrzPassword: null,
+      },
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting QRZ key:', error)
+    console.error('Error deleting QRZ credentials:', error)
     return NextResponse.json(
-      { error: 'Failed to delete QRZ key' },
+      { error: 'Failed to delete QRZ credentials' },
       { status: 500 }
     )
   }

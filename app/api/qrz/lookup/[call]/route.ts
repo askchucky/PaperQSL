@@ -16,27 +16,109 @@ export async function GET(
 
     const callsign = decodeURIComponent(params.call).toUpperCase()
 
-    // Get user's QRZ API key
+    // Reuse QRZ session key for a short window to avoid logging in on every lookup
+    const SESSION_REUSE_WINDOW_MS = 1000 * 60 * 30 // 30 minutes
+
+    const isSessionError = (msg: string) => {
+      const m = msg.toLowerCase()
+      return (
+        m.includes('session') ||
+        m.includes('timeout') ||
+        m.includes('expired') ||
+        m.includes('invalid')
+      )
+    }
+
+    // Get user's QRZ credentials
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { qrzApiKey: true },
+      select: {
+        qrzUsername: true,
+        qrzPassword: true,
+        qrzSessionKey: true,
+        qrzSessionKeyUpdatedAt: true,
+      },
     })
 
-    if (!dbUser?.qrzApiKey) {
+    if (!dbUser?.qrzUsername || !dbUser?.qrzPassword) {
       return NextResponse.json(
-        { error: 'QRZ API key not configured' },
+        { error: 'QRZ credentials not configured' },
         { status: 400 }
       )
     }
 
-    // Decrypt API key
-    const apiKey = decrypt(dbUser.qrzApiKey)
+    // Decrypt password
+    const password = decrypt(dbUser.qrzPassword)
 
-    // Login to QRZ and get session key
-    const sessionKey = await qrzLogin(apiKey)
+    // Get (or refresh) QRZ session key
+    let sessionKey: string
+
+    const canReuseCachedKey =
+      Boolean(dbUser.qrzSessionKey) &&
+      Boolean(dbUser.qrzSessionKeyUpdatedAt) &&
+      Date.now() - new Date(dbUser.qrzSessionKeyUpdatedAt as any).getTime() <
+        SESSION_REUSE_WINDOW_MS
+
+    if (canReuseCachedKey) {
+      sessionKey = dbUser.qrzSessionKey as string
+    } else {
+      try {
+        sessionKey = await qrzLogin(dbUser.qrzUsername, password)
+
+        // Cache for subsequent lookups
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            qrzSessionKey: sessionKey,
+            qrzSessionKeyUpdatedAt: new Date(),
+          },
+        })
+      } catch (error) {
+        // Surface QRZ error messages (e.g., subscription required, invalid login)
+        const errorMessage =
+          error instanceof Error ? error.message : 'QRZ login failed'
+        return NextResponse.json({ error: errorMessage }, { status: 400 })
+      }
+    }
 
     // Lookup callsign
-    const data = await qrzLookup(sessionKey, callsign)
+    let data
+    try {
+      data = await qrzLookup(sessionKey, callsign)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'QRZ lookup failed'
+
+      // If the session is invalid/expired, clear cached key and retry once
+      if (isSessionError(errorMessage)) {
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { qrzSessionKey: null, qrzSessionKeyUpdatedAt: null },
+          })
+
+          const freshSessionKey = await qrzLogin(dbUser.qrzUsername, password)
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { qrzSessionKey: freshSessionKey, qrzSessionKeyUpdatedAt: new Date() },
+          })
+
+          data = await qrzLookup(freshSessionKey, callsign)
+        } catch (retryError) {
+          const retryMsg = retryError instanceof Error ? retryError.message : 'QRZ lookup failed'
+          return NextResponse.json({ error: retryMsg }, { status: 400 })
+        }
+      } else {
+        // Check if it's a "not found" type error
+        if (
+          errorMessage.toLowerCase().includes('not found') ||
+          errorMessage.toLowerCase().includes('no callsign')
+        ) {
+          return NextResponse.json({ error: errorMessage }, { status: 404 })
+        }
+        return NextResponse.json({ error: errorMessage }, { status: 400 })
+      }
+    }
 
     if (!data) {
       return NextResponse.json(
@@ -56,11 +138,11 @@ export async function GET(
       name: data.name || data.fname || null,
     })
   } catch (error) {
-    console.error('Error looking up QRZ:', error)
+    // Only catch unexpected errors (not QRZ API errors which are handled above)
+    console.error('Unexpected error looking up QRZ:', error)
     return NextResponse.json(
       {
-        error: 'Failed to lookup callsign',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: 'An unexpected error occurred while looking up callsign',
       },
       { status: 500 }
     )

@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 
 export default function IntegrationsPage() {
-  const [apiKey, setApiKey] = useState('')
-  const [hasKey, setHasKey] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [hasCredentials, setHasCredentials] = useState(false)
+  const [storedUsername, setStoredUsername] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -14,31 +16,27 @@ export default function IntegrationsPage() {
   } | null>(null)
 
   useEffect(() => {
-    checkKeyStatus()
+    checkCredentialsStatus()
   }, [])
 
-  const checkKeyStatus = async () => {
+  const checkCredentialsStatus = async () => {
     setLoading(true)
     try {
       const response = await fetch('/api/qrz/key')
       const data = await response.json()
 
       if (response.ok) {
-        setHasKey(data.hasKey)
+        setHasCredentials(data.configured || false)
+        setStoredUsername(data.username || null)
       }
     } catch (error) {
-      console.error('Error checking key status:', error)
+      console.error('Error checking credentials status:', error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleTest = async () => {
-    if (!apiKey.trim()) {
-      alert('Please enter an API key')
-      return
-    }
-
     setTesting(true)
     setTestResult(null)
 
@@ -46,19 +44,18 @@ export default function IntegrationsPage() {
       const response = await fetch('/api/qrz/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey }),
       })
 
       const data = await response.json()
 
       setTestResult({
-        success: response.ok,
+        success: response.ok && data.success,
         message: data.message || data.error || 'Test completed',
       })
     } catch (error) {
       setTestResult({
         success: false,
-        message: 'Failed to test API key',
+        message: 'Failed to test QRZ login',
       })
     } finally {
       setTesting(false)
@@ -66,8 +63,13 @@ export default function IntegrationsPage() {
   }
 
   const handleSave = async () => {
-    if (!apiKey.trim()) {
-      alert('Please enter an API key')
+    if (!username.trim()) {
+      alert('Please enter a username')
+      return
+    }
+
+    if (!password.trim()) {
+      alert('Please enter a password')
       return
     }
 
@@ -78,27 +80,28 @@ export default function IntegrationsPage() {
       const response = await fetch('/api/qrz/key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey }),
+        body: JSON.stringify({ username, password }),
       })
 
       if (response.ok) {
-        await checkKeyStatus()
-        setApiKey('')
-        alert('QRZ API key saved successfully!')
+        await checkCredentialsStatus()
+        setUsername('')
+        setPassword('')
+        alert('QRZ credentials saved successfully!')
       } else {
         const data = await response.json()
-        alert(`Error: ${data.error || 'Failed to save key'}`)
+        alert(`Error: ${data.error || 'Failed to save credentials'}`)
       }
     } catch (error) {
-      console.error('Error saving key:', error)
-      alert('Failed to save API key')
+      console.error('Error saving credentials:', error)
+      alert('Failed to save credentials')
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete your QRZ API key?')) {
+    if (!confirm('Are you sure you want to delete your QRZ credentials?')) {
       return
     }
 
@@ -108,15 +111,16 @@ export default function IntegrationsPage() {
       })
 
       if (response.ok) {
-        await checkKeyStatus()
-        setApiKey('')
-        alert('QRZ API key deleted')
+        await checkCredentialsStatus()
+        setUsername('')
+        setPassword('')
+        alert('QRZ credentials deleted')
       } else {
-        alert('Failed to delete API key')
+        alert('Failed to delete credentials')
       }
     } catch (error) {
-      console.error('Error deleting key:', error)
-      alert('Failed to delete API key')
+      console.error('Error deleting credentials:', error)
+      alert('Failed to delete credentials')
     }
   }
 
@@ -130,30 +134,42 @@ export default function IntegrationsPage() {
 
       <div className="max-w-2xl space-y-6">
         <div className="border rounded p-6">
-          <h2 className="text-xl font-semibold mb-4">API Key Configuration</h2>
+          <h2 className="text-xl font-semibold mb-4">QRZ Credentials Configuration</h2>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                QRZ API Key
+                QRZ Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={hasCredentials ? 'Enter new username to replace existing' : 'Enter your QRZ username'}
+                className="w-full px-4 py-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                QRZ Password
               </label>
               <input
                 type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={hasKey ? 'Enter new key to replace existing' : 'Enter your QRZ API key'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={hasCredentials ? 'Enter new password to replace existing' : 'Enter your QRZ password'}
                 className="w-full px-4 py-2 border rounded"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Your API key is encrypted at rest. You need a QRZ.com paid
-                subscription to use the API.
+                Requires a paid QRZ XML subscription. Your password is encrypted at rest.
               </p>
             </div>
 
-            {hasKey && (
+            {hasCredentials && (
               <div className="p-3 bg-green-50 border border-green-200 rounded">
                 <p className="text-sm text-green-800">
-                  ✓ QRZ API key is configured
+                  ✓ QRZ credentials are configured{storedUsername ? ` (${storedUsername})` : ''}
                 </p>
               </div>
             )}
@@ -173,30 +189,35 @@ export default function IntegrationsPage() {
                 >
                   {testResult.message}
                 </p>
+                {!testResult.success && (
+                  <p className="text-xs text-red-700 mt-2">
+                    QRZ XML login failed. Verify your QRZ credentials and that your QRZ XML subscription is active.
+                  </p>
+                )}
               </div>
             )}
 
             <div className="flex gap-4">
               <button
                 onClick={handleTest}
-                disabled={!apiKey.trim() || testing}
+                disabled={testing}
                 className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
               >
-                {testing ? 'Testing...' : 'Test API Key'}
+                {testing ? 'Testing...' : 'Test QRZ Login'}
               </button>
               <button
                 onClick={handleSave}
-                disabled={!apiKey.trim() || saving}
+                disabled={!username.trim() || !password.trim() || saving}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
               >
-                {saving ? 'Saving...' : 'Save API Key'}
+                {saving ? 'Saving...' : 'Save QRZ Credentials'}
               </button>
-              {hasKey && (
+              {hasCredentials && (
                 <button
                   onClick={handleDelete}
                   className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                 >
-                  Delete Key
+                  Delete Credentials
                 </button>
               )}
             </div>
@@ -214,11 +235,11 @@ export default function IntegrationsPage() {
               <strong>Requirements:</strong>
             </p>
             <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>QRZ.com paid subscription</li>
-              <li>Valid QRZ API key (found in your QRZ account settings)</li>
+              <li>QRZ.com paid XML subscription</li>
+              <li>Valid QRZ username and password</li>
             </ul>
             <p>
-              <strong>Privacy:</strong> Your API key is encrypted at rest and
+              <strong>Privacy:</strong> Your password is encrypted at rest and
               only used for lookups you initiate. We do not scrape QRZ HTML or
               make automatic lookups.
             </p>

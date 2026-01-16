@@ -11,33 +11,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { apiKey } = body
+    // Get stored credentials
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { qrzUsername: true, qrzPassword: true },
+    })
 
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API key required' }, { status: 400 })
+    if (!dbUser?.qrzUsername || !dbUser?.qrzPassword) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'QRZ credentials not configured. Please save your credentials first.' 
+        },
+        { status: 400 }
+      )
     }
 
-    // Test the API key
+    // Decrypt password
+    const password = decrypt(dbUser.qrzPassword)
+
+    // Test the credentials
     try {
-      const sessionKey = await qrzLogin(apiKey)
+      const sessionKey = await qrzLogin(dbUser.qrzUsername, password)
       return NextResponse.json({
         success: true,
-        message: 'API key is valid',
+        message: 'QRZ login successful',
       })
     } catch (error) {
       return NextResponse.json(
         {
           success: false,
-          error: error instanceof Error ? error.message : 'Invalid API key',
+          message: error instanceof Error ? error.message : 'QRZ login failed',
         },
         { status: 400 }
       )
     }
   } catch (error) {
-    console.error('Error testing QRZ API key:', error)
+    console.error('Error testing QRZ login:', error)
     return NextResponse.json(
-      { error: 'Failed to test API key' },
+      { 
+        success: false,
+        message: 'Failed to test QRZ login' 
+      },
       { status: 500 }
     )
   }
