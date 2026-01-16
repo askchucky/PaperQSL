@@ -22,6 +22,8 @@ model User {
   exports   Export[]
   qrzUsername String?  // QRZ username
   qrzPassword String?  // Encrypted QRZ password
+  qrzSessionKey          String?   // Cached QRZ session key (short-lived)
+  qrzSessionKeyUpdatedAt DateTime? // When the session key was last refreshed
 
   @@index([clerkId])
 }
