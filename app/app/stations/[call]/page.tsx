@@ -23,6 +23,7 @@ interface Station {
   receivedAt: Date | null
   notes: string | null
   status: string | null
+  qslManager: string | null
 }
 
 interface QSO {
@@ -61,6 +62,7 @@ export default function StationDetailPage() {
   const [receivedAt, setReceivedAt] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState('')
+  const [qslManager, setQslManager] = useState('')
 
   useEffect(() => {
     fetchStation()
@@ -95,6 +97,7 @@ export default function StationDetailPage() {
         )
         setNotes(s.notes || '')
         setStatus(s.status || '')
+        setQslManager(s.qslManager || '')
       }
     } catch (error) {
       console.error('Error fetching station:', error)
@@ -126,6 +129,7 @@ export default function StationDetailPage() {
             receivedAt: receivedAt || null,
             notes,
             status: status || null,
+            qslManager: qslManager || null,
           }),
         }
       )
@@ -162,6 +166,7 @@ export default function StationDetailPage() {
         if (data.state) setState(data.state)
         if (data.postalCode) setPostalCode(data.postalCode)
         if (data.country) setCountry(data.country)
+        if (data.qslManager) setQslManager(data.qslManager)
         setAddressSource('QRZ')
         alert('Address filled from QRZ!')
       } else {
@@ -310,137 +315,17 @@ export default function StationDetailPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
+                  QSL Manager
+                </label>
+                <input
+                  type="text"
+                  value={qslManager}
+                  onChange={(e) => setQslManager(e.target.value)}
+                  className="w-full px-3 py-2 border rounded"
+                  placeholder="e.g. W3XYZ"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
                   Address Line 1
                 </label>
-                <input
-                  type="text"
-                  value={addressLine1}
-                  onChange={(e) => setAddressLine1(e.target.value)}
-                  className="w-full px-3 py-2 border rounded"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Address Line 2
-                </label>
-                <input
-                  type="text"
-                  value={addressLine2}
-                  onChange={(e) => setAddressLine2(e.target.value)}
-                  className="w-full px-3 py-2 border rounded"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">City</label>
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">State</label>
-                  <input
-                    type="text"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Country
-                  </label>
-                  <input
-                    type="text"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Address Source
-                </label>
-                <select
-                  value={addressSource}
-                  onChange={(e) => setAddressSource(e.target.value)}
-                  className="w-full px-3 py-2 border rounded"
-                >
-                  <option value="">None</option>
-                  <option value="QRZ">QRZ</option>
-                  <option value="HamQTH">HamQTH</option>
-                  <option value="Manual">Manual</option>
-                </select>
-              </div>
-
-              {station.lastVerifiedAt && (
-                <p className="text-xs text-gray-500">
-                  Last verified:{' '}
-                  {format(new Date(station.lastVerifiedAt), 'MMM d, yyyy')}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Recent QSOs */}
-          <div className="border rounded p-6">
-            <h2 className="text-xl font-semibold mb-4">Recent QSOs</h2>
-            {qsos.length === 0 ? (
-              <p className="text-gray-500 text-sm">No QSOs found</p>
-            ) : (
-              <div className="space-y-2">
-                {qsos.slice(0, 5).map((qso) => (
-                  <div
-                    key={qso.id}
-                    className="text-sm border-b pb-2 last:border-0"
-                  >
-                    <div className="flex justify-between">
-                      <span>
-                        {format(new Date(qso.date), 'MMM d, yyyy')}
-                        {qso.time && ` ${qso.time}`}
-                      </span>
-                      <span className="text-gray-600">
-                        {qso.band} {qso.mode}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 flex gap-4">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
-    </div>
-  )
-}

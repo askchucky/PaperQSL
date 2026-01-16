@@ -86,6 +86,8 @@ export async function PATCH(
     if (body.postalCode !== undefined) updateData.postalCode = body.postalCode
     if (body.country !== undefined) updateData.country = body.country
     if (body.addressSource !== undefined) updateData.addressSource = body.addressSource
+    if (body.qslManager !== undefined) updateData.qslManager = body.qslManager
+
     if (body.lastVerifiedAt !== undefined) {
       updateData.lastVerifiedAt = body.lastVerifiedAt ? new Date(body.lastVerifiedAt) : null
     }

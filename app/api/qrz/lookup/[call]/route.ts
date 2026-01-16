@@ -127,6 +127,48 @@ export async function GET(
       )
     }
 
+    // Persist looked-up data onto the Station record (so Fill from QRZ saves it)
+    try {
+      await prisma.station.upsert({
+        where: {
+          userId_callsign: {
+            userId: user.id,
+            callsign,
+          },
+        },
+        create: {
+          userId: user.id,
+          callsign,
+          qsoCount: 0,
+          eligibility: 'Unknown',
+          eligibilityOverride: false,
+          addressLine1: data.addr1 || null,
+          addressLine2: data.addr2 || null,
+          city: data.city || null,
+          state: data.state || null,
+          postalCode: data.zip || null,
+          country: data.country || null,
+          addressSource: 'QRZ',
+          lastVerifiedAt: new Date(),
+          qslManager: (data as any).qslmgr || null,
+        },
+        update: {
+          addressLine1: data.addr1 || null,
+          addressLine2: data.addr2 || null,
+          city: data.city || null,
+          state: data.state || null,
+          postalCode: data.zip || null,
+          country: data.country || null,
+          addressSource: 'QRZ',
+          lastVerifiedAt: new Date(),
+          qslManager: (data as any).qslmgr || null,
+        },
+      })
+    } catch (e) {
+      console.error('Failed to persist QRZ lookup to Station:', e)
+      // Do not fail the lookup response if persistence fails
+    }
+
     // Return formatted address data
     return NextResponse.json({
       addressLine1: data.addr1 || null,
@@ -136,6 +178,7 @@ export async function GET(
       postalCode: data.zip || null,
       country: data.country || null,
       name: data.name || data.fname || null,
+      qslManager: (data as any).qslmgr || null,
     })
   } catch (error) {
     // Only catch unexpected errors (not QRZ API errors which are handled above)
