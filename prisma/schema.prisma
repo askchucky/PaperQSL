@@ -20,7 +20,8 @@ model User {
   qsos      QSO[]
   stations  Station[]
   exports   Export[]
-  qrzApiKey String?  // Encrypted QRZ API key
+  qrzUsername String?  // QRZ username
+  qrzPassword String?  // Encrypted QRZ password
 
   @@index([clerkId])
 }
