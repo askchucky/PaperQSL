@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
@@ -65,15 +65,14 @@ export default function StationDetailPage() {
   const [qslManager, setQslManager] = useState('')
 
   useEffect(() => {
-    fetchStation()
+    void fetchStation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callsign])
 
   const fetchStation = async () => {
     setLoading(true)
     try {
-      const response = await fetch(
-        `/api/stations/${encodeURIComponent(callsign)}`
-      )
+      const response = await fetch(`/api/stations/${encodeURIComponent(callsign)}`)
       const data = await response.json()
 
       if (response.ok) {
@@ -92,12 +91,12 @@ export default function StationDetailPage() {
         setAddressSource(s.addressSource || '')
         setSentAt(s.sentAt ? format(new Date(s.sentAt), 'yyyy-MM-dd') : '')
         setSentMethod(s.sentMethod || '')
-        setReceivedAt(
-          s.receivedAt ? format(new Date(s.receivedAt), 'yyyy-MM-dd') : ''
-        )
+        setReceivedAt(s.receivedAt ? format(new Date(s.receivedAt), 'yyyy-MM-dd') : '')
         setNotes(s.notes || '')
         setStatus(s.status || '')
         setQslManager(s.qslManager || '')
+      } else {
+        console.error('Failed to fetch station:', data?.error)
       }
     } catch (error) {
       console.error('Error fetching station:', error)
@@ -109,38 +108,36 @@ export default function StationDetailPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const response = await fetch(
-        `/api/stations/${encodeURIComponent(callsign)}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            eligibility,
-            addressLine1,
-            addressLine2,
-            city,
-            state,
-            postalCode,
-            country,
-            addressSource: addressSource || null,
-            lastVerifiedAt: addressLine1 ? new Date().toISOString() : null,
-            sentAt: sentAt || null,
-            sentMethod: sentMethod || null,
-            receivedAt: receivedAt || null,
-            notes,
-            status: status || null,
-            qslManager: qslManager || null,
-          }),
-        }
-      )
+      const response = await fetch(`/api/stations/${encodeURIComponent(callsign)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eligibility,
+          addressLine1,
+          addressLine2,
+          city,
+          state,
+          postalCode,
+          country,
+          addressSource: addressSource || null,
+          lastVerifiedAt: addressLine1 ? new Date().toISOString() : null,
+          sentAt: sentAt || null,
+          sentMethod: sentMethod || null,
+          receivedAt: receivedAt || null,
+          notes,
+          status: status || null,
+          qslManager: qslManager || null,
+        }),
+      })
+
+      const data = await response.json()
 
       if (response.ok) {
         await fetchStation()
         router.refresh()
         alert('Station updated successfully!')
       } else {
-        const data = await response.json()
-        alert(`Error: ${data.error || 'Failed to update'}`)
+        alert(`Error: ${data?.error || 'Failed to update'}`)
       }
     } catch (error) {
       console.error('Error saving station:', error)
@@ -153,13 +150,11 @@ export default function StationDetailPage() {
   const handleQRZLookup = async () => {
     setLookingUpQRZ(true)
     try {
-      const response = await fetch(
-        `/api/qrz/lookup/${encodeURIComponent(callsign)}`
-      )
+      const response = await fetch(`/api/qrz/lookup/${encodeURIComponent(callsign)}`)
       const data = await response.json()
 
       if (response.ok) {
-        // Populate address fields from QRZ
+        // Populate address fields from QRZ (and qslManager)
         if (data.addressLine1) setAddressLine1(data.addressLine1)
         if (data.addressLine2) setAddressLine2(data.addressLine2)
         if (data.city) setCity(data.city)
@@ -170,7 +165,7 @@ export default function StationDetailPage() {
         setAddressSource('QRZ')
         alert('Address filled from QRZ!')
       } else {
-        alert(`Error: ${data.error || 'Failed to lookup callsign'}`)
+        alert(`Error: ${data?.error || 'Failed to lookup callsign'}`)
       }
     } catch (error) {
       console.error('Error looking up QRZ:', error)
@@ -191,10 +186,7 @@ export default function StationDetailPage() {
   return (
     <div>
       <div className="mb-6">
-        <button
-          onClick={() => router.back()}
-          className="text-blue-600 hover:text-blue-800 mb-4"
-        >
+        <button onClick={() => router.back()} className="text-blue-600 hover:text-blue-800 mb-4">
           ← Back to Stations
         </button>
         <h1 className="text-3xl font-bold font-mono">{station.callsign}</h1>
@@ -211,9 +203,7 @@ export default function StationDetailPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Eligibility
-                </label>
+                <label className="block text-sm font-medium mb-1">Eligibility</label>
                 <select
                   value={eligibility}
                   onChange={(e) => setEligibility(e.target.value)}
@@ -224,9 +214,7 @@ export default function StationDetailPage() {
                   <option value="Not Eligible">Not Eligible</option>
                 </select>
                 {station.eligibilityOverride && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Manually set by user
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Manually set by user</p>
                 )}
               </div>
 
@@ -246,9 +234,7 @@ export default function StationDetailPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Sent Date
-                </label>
+                <label className="block text-sm font-medium mb-1">Sent Date</label>
                 <input
                   type="date"
                   value={sentAt}
@@ -258,9 +244,7 @@ export default function StationDetailPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Sent Method
-                </label>
+                <label className="block text-sm font-medium mb-1">Sent Method</label>
                 <select
                   value={sentMethod}
                   onChange={(e) => setSentMethod(e.target.value)}
@@ -273,9 +257,7 @@ export default function StationDetailPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Received Date
-                </label>
+                <label className="block text-sm font-medium mb-1">Received Date</label>
                 <input
                   type="date"
                   value={receivedAt}
@@ -314,9 +296,7 @@ export default function StationDetailPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  QSL Manager
-                </label>
+                <label className="block text-sm font-medium mb-1">QSL Manager</label>
                 <input
                   type="text"
                   value={qslManager}
@@ -325,7 +305,126 @@ export default function StationDetailPage() {
                   placeholder="e.g. W3XYZ"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Address Line 1
-                </label>
+                <label className="block text-sm font-medium mb-1">Address Line 1</label>
+                <input
+                  type="text"
+                  value={addressLine1}
+                  onChange={(e) => setAddressLine1(e.target.value)}
+                  className="w-full px-3 py-2 border rounded"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Address Line 2</label>
+                <input
+                  type="text"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                  className="w-full px-3 py-2 border rounded"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">City</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">State</label>
+                  <input
+                    type="text"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Country</label>
+                  <input
+                    type="text"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Address Source</label>
+                <select
+                  value={addressSource}
+                  onChange={(e) => setAddressSource(e.target.value)}
+                  className="w-full px-3 py-2 border rounded"
+                >
+                  <option value="">None</option>
+                  <option value="QRZ">QRZ</option>
+                  <option value="HamQTH">HamQTH</option>
+                  <option value="Manual">Manual</option>
+                </select>
+              </div>
+
+              {station.lastVerifiedAt && (
+                <p className="text-xs text-gray-500">
+                  Last verified: {format(new Date(station.lastVerifiedAt), 'MMM d, yyyy')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Recent QSOs */}
+          <div className="border rounded p-6">
+            <h2 className="text-xl font-semibold mb-4">Recent QSOs</h2>
+            {qsos.length === 0 ? (
+              <p className="text-gray-500 text-sm">No QSOs found</p>
+            ) : (
+              <div className="space-y-2">
+                {qsos.slice(0, 5).map((qso) => (
+                  <div key={qso.id} className="text-sm border-b pb-2 last:border-0">
+                    <div className="flex justify-between">
+                      <span>
+                        {format(new Date(qso.date), 'MMM d, yyyy')}
+                        {qso.time && ` ${qso.time}`}
+                      </span>
+                      <span className="text-gray-600">
+                        {qso.band} {qso.mode}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 flex gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  )
+}
