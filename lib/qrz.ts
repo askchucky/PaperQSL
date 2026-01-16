@@ -17,6 +17,7 @@ interface QRZResponse {
     zip?: string
     country?: string
     email?: string
+    qslmgr?: string
     u_views?: string
     bio?: string
     image?: string
@@ -75,7 +76,7 @@ export async function qrzLookup(sessionKey: string, callsign: string): Promise<Q
   }
 
   const callsignData: any = {}
-  const fields = ['call', 'fname', 'name', 'addr1', 'addr2', 'city', 'state', 'zip', 'country', 'email']
+  const fields = ['call', 'fname', 'name', 'qslmgr', 'addr1', 'addr2', 'city', 'state', 'zip', 'country', 'email']
 
   for (const field of fields) {
     const regex = new RegExp(`<${field}>([^<]+)<\/${field}>`)

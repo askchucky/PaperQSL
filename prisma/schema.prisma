@@ -74,6 +74,10 @@ model Station {
   addressSource String? // QRZ | HamQTH | Manual
   lastVerifiedAt DateTime?
 
+  // QRZ Extras
+  qslManager   String?  // QRZ QSL manager (qslmgr)
+  qslCardImage String?  // URL to stored QSL card image
+
   // QSL Lifecycle
   sentAt      DateTime?
   sentMethod  String? // Direct | SASE
