@@ -45,9 +45,37 @@ export async function GET(
       take: 100, // Limit to recent 100
     })
 
+    // Get distinct source files
+    const sourceFiles = await prisma.qSO.findMany({
+      where: {
+        userId: user.id,
+        callsign: station.callsign,
+        sourceFile: { not: null },
+      },
+      select: {
+        sourceFile: true,
+      },
+      distinct: ['sourceFile'],
+    })
+
+    // Get most recent POTA activation (myPotaRef)
+    const latestPotaQso = await prisma.qSO.findFirst({
+      where: {
+        userId: user.id,
+        callsign: station.callsign,
+        myPotaRef: { not: null },
+      },
+      orderBy: { date: 'desc' },
+      select: {
+        myPotaRef: true,
+      },
+    })
+
     return NextResponse.json({
       station,
       qsos,
+      sourceFiles: sourceFiles.map((sf) => sf.sourceFile).filter(Boolean) as string[],
+      myPotaRef: latestPotaQso?.myPotaRef || null,
     })
   } catch (error) {
     console.error('Error fetching station:', error)

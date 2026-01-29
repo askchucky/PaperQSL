@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseADIF, normalizeCallsign, parseADIFDate, parseADIFTime } from '@/lib/adif-parser'
+import { hydrateStationFromQRZ } from '@/lib/qrzHydrate'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
 
     // Read file content
     const content = await file.text()
+    const sourceFileName = file.name
 
     // Parse ADIF
     const records = parseADIF(content)
@@ -41,6 +43,8 @@ export async function POST(request: Request) {
       rstRcvd: string | null
       qth: string | null
       comment: string | null
+      sourceFile: string | null
+      myPotaRef: string | null
       adifData: any
     }> = []
 
@@ -72,6 +76,8 @@ export async function POST(request: Request) {
         rstRcvd: record.RST_RCVD || null,
         qth: record.QTH || null,
         comment: record.COMMENT || record.NOTES || null,
+        sourceFile: sourceFileName || null,
+        myPotaRef: record.MY_POTA_REF || null,
         adifData: record,
       })
     }
@@ -128,13 +134,44 @@ export async function POST(request: Request) {
       return {
         qsosCreated: qsoResults.length,
         stationsUpdated: stations.length,
+        distinctCallsigns: Array.from(callsignMap.keys()),
       }
     })
+
+    // Auto-load QRZ data for distinct callsigns with concurrency limit
+    const distinctCallsigns = result.distinctCallsigns
+    const qrzWarnings: string[] = []
+    const CONCURRENCY_LIMIT = 3
+
+    // Process callsigns in batches
+    for (let i = 0; i < distinctCallsigns.length; i += CONCURRENCY_LIMIT) {
+      const batch = distinctCallsigns.slice(i, i + CONCURRENCY_LIMIT)
+      const results = await Promise.all(
+        batch.map(async (callsign) => {
+          const result = await hydrateStationFromQRZ({
+            userId: user.id,
+            callsign,
+          })
+          if (result.error) {
+            return { callsign, error: result.error }
+          }
+          return { callsign, success: true }
+        })
+      )
+
+      // Collect warnings
+      results.forEach((r) => {
+        if ('error' in r) {
+          qrzWarnings.push(`${r.callsign}: ${r.error}`)
+        }
+      })
+    }
 
     return NextResponse.json({
       success: true,
       ...result,
       totalRecords: records.length,
+      qrzWarnings: qrzWarnings.length > 0 ? qrzWarnings : undefined,
     })
   } catch (error) {
     console.error('Import error:', error)

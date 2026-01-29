@@ -13,6 +13,9 @@ interface Station {
   sentAt: Date | null
   receivedAt: Date | null
   status: string | null
+  latestQsoDate: Date | null
+  latestQsoTime: string | null
+  sourceFile: string | null
 }
 
 export default function StationsPage() {
@@ -187,8 +190,10 @@ export default function StationsPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Last QSO</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Callsign</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">QSOs</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Source File</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Eligibility</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Address</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
@@ -198,45 +203,72 @@ export default function StationsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {stations.map((station) => (
-                  <tr key={station.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono font-semibold">
-                      {station.callsign}
-                    </td>
-                    <td className="px-4 py-3">{station.qsoCount}</td>
-                    <td className="px-4 py-3">
-                      {getEligibilityBadge(station.eligibility)}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {station.addressLine1 ? (
-                        <span className="text-green-600">✓</span>
-                      ) : (
-                        <span className="text-red-600">✗</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getStatusBadge(station.status)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {station.sentAt
-                        ? format(new Date(station.sentAt), 'MMM d, yyyy')
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {station.receivedAt
-                        ? format(new Date(station.receivedAt), 'MMM d, yyyy')
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/app/stations/${encodeURIComponent(station.callsign)}`}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {stations.map((station) => {
+                  const formatUtcTime = (time: string | null): string => {
+                    if (!time) return ''
+                    const digits = time.replace(/[^0-9]/g, '')
+                    if (digits.length === 0) return ''
+                    const padded = digits.padStart(4, '0').slice(0, 4)
+                    return `${padded}UTC`
+                  }
+
+                  return (
+                    <tr key={station.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {station.latestQsoDate ? (
+                          <div>
+                            <div>{format(new Date(station.latestQsoDate), 'MMM d, yyyy')}</div>
+                            {station.latestQsoTime && (
+                              <div className="text-xs text-gray-500">
+                                {formatUtcTime(station.latestQsoTime)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-semibold">
+                        {station.callsign}
+                      </td>
+                      <td className="px-4 py-3">{station.qsoCount}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {station.sourceFile || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {getEligibilityBadge(station.eligibility)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {station.addressLine1 ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-red-600">✗</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {getStatusBadge(station.status)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {station.sentAt
+                          ? format(new Date(station.sentAt), 'MMM d, yyyy')
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {station.receivedAt
+                          ? format(new Date(station.receivedAt), 'MMM d, yyyy')
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/app/stations/${encodeURIComponent(station.callsign)}`}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

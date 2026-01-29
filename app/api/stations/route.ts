@@ -64,8 +64,68 @@ export async function GET(request: NextRequest) {
       prisma.station.count({ where }),
     ])
 
+    // Fetch latest QSO per station and source file info
+    const stationCallsigns = stations.map((s) => s.callsign)
+    const latestQsos = await prisma.qSO.findMany({
+      where: {
+        userId: user.id,
+        callsign: { in: stationCallsigns },
+      },
+      select: {
+        callsign: true,
+        date: true,
+        time: true,
+        sourceFile: true,
+      },
+      orderBy: [{ date: 'desc' }, { time: 'desc' }],
+    })
+
+    // Group by callsign to get latest per station
+    const latestQsoMap = new Map<string, { date: Date; time: string | null; sourceFile: string | null }>()
+    const sourceFileMap = new Map<string, Set<string>>()
+
+    for (const qso of latestQsos) {
+      if (!latestQsoMap.has(qso.callsign)) {
+        latestQsoMap.set(qso.callsign, {
+          date: qso.date,
+          time: qso.time,
+          sourceFile: qso.sourceFile,
+        })
+      }
+
+      // Collect all source files per callsign
+      if (qso.sourceFile) {
+        if (!sourceFileMap.has(qso.callsign)) {
+          sourceFileMap.set(qso.callsign, new Set())
+        }
+        sourceFileMap.get(qso.callsign)!.add(qso.sourceFile)
+      }
+    }
+
+    // Enrich stations with latest QSO data and source file info
+    const enrichedStations = stations.map((station) => {
+      const latestQso = latestQsoMap.get(station.callsign)
+      const sourceFiles = sourceFileMap.get(station.callsign)
+      
+      let sourceFileDisplay: string | null = null
+      if (sourceFiles && sourceFiles.size > 0) {
+        if (sourceFiles.size === 1) {
+          sourceFileDisplay = Array.from(sourceFiles)[0]
+        } else {
+          sourceFileDisplay = 'Multiple'
+        }
+      }
+
+      return {
+        ...station,
+        latestQsoDate: latestQso?.date || null,
+        latestQsoTime: latestQso?.time || null,
+        sourceFile: sourceFileDisplay,
+      }
+    })
+
     return NextResponse.json({
-      stations,
+      stations: enrichedStations,
       total,
       page,
       limit,

@@ -44,6 +44,8 @@ model QSO {
   qth       String?
   comment   String?
   adifData  Json?    // Store full ADIF record as JSON
+  sourceFile String? // Filename of the imported log file
+  myPotaRef  String? // MY_POTA_REF from ADIF
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -76,7 +78,11 @@ model Station {
 
   // QRZ Extras
   qslManager   String?  // QRZ QSL manager (qslmgr)
-  qslCardImage String?  // URL to stored QSL card image
+  qslCardImage String?  // URL to stored QSL card image (deprecated, use qslCardFrontUrl/BackUrl)
+  qslCardFrontUrl String? // URL to stored QSL card front image
+  qslCardBackUrl  String? // URL to stored QSL card back image
+  qslCardFrontUploadedAt DateTime? // When front image was uploaded
+  qslCardBackUploadedAt  DateTime? // When back image was uploaded
 
   // QSL Lifecycle
   sentAt      DateTime?

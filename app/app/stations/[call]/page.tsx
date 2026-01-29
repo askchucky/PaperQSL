@@ -24,6 +24,10 @@ interface Station {
   notes: string | null
   status: string | null
   qslManager: string | null
+  qslCardFrontUrl: string | null
+  qslCardBackUrl: string | null
+  qslCardFrontUploadedAt: Date | null
+  qslCardBackUploadedAt: Date | null
 }
 
 
@@ -57,9 +61,14 @@ export default function StationDetailPage() {
 
   const [station, setStation] = useState<Station | null>(null)
   const [qsos, setQsos] = useState<QSO[]>([])
+  const [sourceFiles, setSourceFiles] = useState<string[]>([])
+  const [myPotaRef, setMyPotaRef] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [lookingUpQRZ, setLookingUpQRZ] = useState(false)
+  const [uploadingFront, setUploadingFront] = useState(false)
+  const [uploadingBack, setUploadingBack] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
   // Form state
   const [eligibility, setEligibility] = useState('Unknown')
@@ -91,6 +100,8 @@ export default function StationDetailPage() {
       if (response.ok) {
         setStation(data.station)
         setQsos(data.qsos || [])
+        setSourceFiles(data.sourceFiles || [])
+        setMyPotaRef(data.myPotaRef || null)
 
         // Populate form
         const s = data.station
@@ -185,6 +196,35 @@ export default function StationDetailPage() {
       alert('Failed to lookup callsign in QRZ')
     } finally {
       setLookingUpQRZ(false)
+    }
+  }
+
+  const handleQSLUpload = async (side: 'front' | 'back', file: File) => {
+    const uploading = side === 'front' ? setUploadingFront : setUploadingBack
+    uploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('side', side)
+      formData.append('file', file)
+
+      const response = await fetch(`/api/stations/${encodeURIComponent(callsign)}/qsl-cards`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        await fetchStation()
+        alert(`${side === 'front' ? 'Front' : 'Back'} QSL card uploaded successfully!`)
+      } else {
+        alert(`Error: ${data?.error || 'Failed to upload QSL card'}`)
+      }
+    } catch (error) {
+      console.error('Error uploading QSL card:', error)
+      alert('Failed to upload QSL card')
+    } finally {
+      uploading(false)
     }
   }
 
@@ -428,6 +468,115 @@ export default function StationDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Source Files Section */}
+      {sourceFiles.length > 0 && (
+        <div className="mt-6 border rounded p-6">
+          <h2 className="text-xl font-semibold mb-4">Source Files</h2>
+          <ul className="list-disc list-inside space-y-1">
+            {sourceFiles.map((file, idx) => (
+              <li key={idx} className="text-sm text-gray-700">
+                {file}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* POTA Activation */}
+      {myPotaRef && (
+        <div className="mt-6 border rounded p-6">
+          <h2 className="text-xl font-semibold mb-2">From POTA Activation</h2>
+          <p className="text-sm text-gray-700">{myPotaRef}</p>
+        </div>
+      )}
+
+      {/* QSL Card Images */}
+      <div className="mt-6 border rounded p-6">
+        <h2 className="text-xl font-semibold mb-4">QSL Card Images</h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Front */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Front</label>
+            {station?.qslCardFrontUrl ? (
+              <div className="space-y-2">
+                <img
+                  src={station.qslCardFrontUrl}
+                  alt="QSL Card Front"
+                  className="w-full max-w-xs border rounded cursor-pointer hover:opacity-80"
+                  onClick={() => setLightboxImage(station.qslCardFrontUrl!)}
+                />
+                {station.qslCardFrontUploadedAt && (
+                  <p className="text-xs text-gray-500">
+                    Uploaded: {format(new Date(station.qslCardFrontUploadedAt), 'MMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/jpg"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  handleQSLUpload('front', file)
+                }
+              }}
+              disabled={uploadingFront}
+              className="mt-2 text-sm"
+            />
+            {uploadingFront && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
+          </div>
+
+          {/* Back */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Back</label>
+            {station?.qslCardBackUrl ? (
+              <div className="space-y-2">
+                <img
+                  src={station.qslCardBackUrl}
+                  alt="QSL Card Back"
+                  className="w-full max-w-xs border rounded cursor-pointer hover:opacity-80"
+                  onClick={() => setLightboxImage(station.qslCardBackUrl!)}
+                />
+                {station.qslCardBackUploadedAt && (
+                  <p className="text-xs text-gray-500">
+                    Uploaded: {format(new Date(station.qslCardBackUploadedAt), 'MMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/jpg"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  handleQSLUpload('back', file)
+                }
+              }}
+              disabled={uploadingBack}
+              className="mt-2 text-sm"
+            />
+            {uploadingBack && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={() => setLightboxImage(null)}
+        >
+          <img
+            src={lightboxImage}
+            alt="QSL Card"
+            className="max-w-4xl max-h-[90vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       <div className="mt-6 flex gap-4">
         <button
