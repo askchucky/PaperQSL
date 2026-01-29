@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const skip = (page - 1) * limit
+    const sortBy = searchParams.get('sortBy') || 'latestQsoDate'
+    const sortOrder = searchParams.get('sortOrder') || 'desc'
 
     // Build where clause
     const where: any = {
@@ -54,18 +56,17 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const [stations, total] = await Promise.all([
+    // Get all stations first (we'll sort after enriching with QSO data)
+    const [allStations, total] = await Promise.all([
       prisma.station.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: { callsign: 'asc' },
       }),
       prisma.station.count({ where }),
     ])
 
+    const stationCallsigns = allStations.map((s) => s.callsign)
+
     // Fetch latest QSO per station and source file info
-    const stationCallsigns = stations.map((s) => s.callsign)
     const latestQsos = await prisma.qSO.findMany({
       where: {
         userId: user.id,
@@ -80,9 +81,24 @@ export async function GET(request: NextRequest) {
       orderBy: [{ date: 'desc' }, { time: 'desc' }],
     })
 
+    // Fetch POTA activation data
+    const potaQsos = await prisma.qSO.findMany({
+      where: {
+        userId: user.id,
+        callsign: { in: stationCallsigns },
+        myPotaRef: { not: null },
+      },
+      select: {
+        callsign: true,
+        myPotaRef: true,
+      },
+      orderBy: { date: 'desc' },
+    })
+
     // Group by callsign to get latest per station
     const latestQsoMap = new Map<string, { date: Date; time: string | null; sourceFile: string | null }>()
     const sourceFileMap = new Map<string, Set<string>>()
+    const potaMap = new Map<string, string>()
 
     for (const qso of latestQsos) {
       if (!latestQsoMap.has(qso.callsign)) {
@@ -102,10 +118,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Enrich stations with latest QSO data and source file info
-    const enrichedStations = stations.map((station) => {
+    // Group POTA activations by callsign (get most recent)
+    for (const qso of potaQsos) {
+      if (!potaMap.has(qso.callsign) && qso.myPotaRef) {
+        potaMap.set(qso.callsign, qso.myPotaRef)
+      }
+    }
+
+    // Enrich stations with latest QSO data, source file info, and POTA activation
+    const enrichedStations = allStations.map((station) => {
       const latestQso = latestQsoMap.get(station.callsign)
       const sourceFiles = sourceFileMap.get(station.callsign)
+      const potaRef = potaMap.get(station.callsign)
       
       let sourceFileDisplay: string | null = null
       if (sourceFiles && sourceFiles.size > 0) {
@@ -121,8 +145,56 @@ export async function GET(request: NextRequest) {
         latestQsoDate: latestQso?.date || null,
         latestQsoTime: latestQso?.time || null,
         sourceFile: sourceFileDisplay,
+        potaActivation: potaRef || null,
       }
     })
+
+    // Sort enriched stations
+    const sortedStations = [...enrichedStations].sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortBy) {
+        case 'latestQsoDate':
+          aValue = a.latestQsoDate ? new Date(a.latestQsoDate).getTime() : 0
+          bValue = b.latestQsoDate ? new Date(b.latestQsoDate).getTime() : 0
+          break
+        case 'callsign':
+          aValue = a.callsign.toUpperCase()
+          bValue = b.callsign.toUpperCase()
+          break
+        case 'qsoCount':
+          aValue = a.qsoCount
+          bValue = b.qsoCount
+          break
+        case 'sourceFile':
+          aValue = a.sourceFile || ''
+          bValue = b.sourceFile || ''
+          break
+        case 'sentAt':
+          aValue = a.sentAt ? new Date(a.sentAt).getTime() : 0
+          bValue = b.sentAt ? new Date(b.sentAt).getTime() : 0
+          break
+        case 'receivedAt':
+          aValue = a.receivedAt ? new Date(a.receivedAt).getTime() : 0
+          bValue = b.receivedAt ? new Date(b.receivedAt).getTime() : 0
+          break
+        case 'potaActivation':
+          aValue = a.potaActivation || ''
+          bValue = b.potaActivation || ''
+          break
+        default:
+          aValue = a.latestQsoDate ? new Date(a.latestQsoDate).getTime() : 0
+          bValue = b.latestQsoDate ? new Date(b.latestQsoDate).getTime() : 0
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+
+    // Apply pagination after sorting
+    const stations = sortedStations.slice(skip, skip + limit)
 
     return NextResponse.json({
       stations: enrichedStations,

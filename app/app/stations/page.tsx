@@ -16,6 +16,7 @@ interface Station {
   latestQsoDate: Date | null
   latestQsoTime: string | null
   sourceFile: string | null
+  potaActivation: string | null
 }
 
 export default function StationsPage() {
@@ -32,12 +33,18 @@ export default function StationsPage() {
   const [missingAddress, setMissingAddress] = useState(false)
   const [notSent, setNotSent] = useState(false)
 
+  // Sorting
+  const [sortBy, setSortBy] = useState('latestQsoDate')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
   const fetchStations = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '50',
+        sortBy: sortBy,
+        sortOrder: sortOrder,
       })
 
       if (search) params.append('search', search)
@@ -63,7 +70,7 @@ export default function StationsPage() {
 
   useEffect(() => {
     fetchStations()
-  }, [page, eligibilityFilter, statusFilter, missingAddress, notSent])
+  }, [page, eligibilityFilter, statusFilter, missingAddress, notSent, sortBy, sortOrder])
 
   // Debounce search
   useEffect(() => {
@@ -111,6 +118,37 @@ export default function StationsPage() {
       >
         {status}
       </span>
+    )
+  }
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      // Toggle sort order if clicking the same column
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new column and default to ascending
+      setSortBy(column)
+      setSortOrder('asc')
+    }
+    setPage(1) // Reset to first page when sorting changes
+  }
+
+  const SortableHeader = ({ column, children }: { column: string; children: React.ReactNode }) => {
+    const isActive = sortBy === column
+    return (
+      <th
+        className="px-4 py-3 text-left text-sm font-semibold cursor-pointer hover:bg-gray-100 select-none"
+        onClick={() => handleSort(column)}
+      >
+        <div className="flex items-center gap-1">
+          {children}
+          {isActive && (
+            <span className="text-gray-500">
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </span>
+          )}
+        </div>
+      </th>
     )
   }
 
@@ -190,15 +228,16 @@ export default function StationsPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Last QSO</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Callsign</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">QSOs</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Source File</th>
+                  <SortableHeader column="latestQsoDate">Last QSO</SortableHeader>
+                  <SortableHeader column="callsign">Callsign</SortableHeader>
+                  <SortableHeader column="qsoCount">QSOs</SortableHeader>
+                  <SortableHeader column="sourceFile">Source File</SortableHeader>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Eligibility</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Address</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Sent</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Received</th>
+                  <SortableHeader column="sentAt">Sent</SortableHeader>
+                  <SortableHeader column="receivedAt">Received</SortableHeader>
+                  <SortableHeader column="potaActivation">POTA Activation</SortableHeader>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -229,7 +268,14 @@ export default function StationsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 font-mono font-semibold">
-                        {station.callsign}
+                        <a
+                          href={`https://www.qrz.com/db/${encodeURIComponent(station.callsign)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {station.callsign}
+                        </a>
                       </td>
                       <td className="px-4 py-3">{station.qsoCount}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -257,6 +303,9 @@ export default function StationsPage() {
                         {station.receivedAt
                           ? format(new Date(station.receivedAt), 'MMM d, yyyy')
                           : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {station.potaActivation || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <Link

@@ -242,7 +242,16 @@ export default function StationDetailPage() {
         <button onClick={() => router.back()} className="text-blue-600 hover:text-blue-800 mb-4">
           ← Back to Stations
         </button>
-        <h1 className="text-3xl font-bold font-mono">{station.callsign}</h1>
+        <h1 className="text-3xl font-bold font-mono">
+          <a
+            href={`https://www.qrz.com/db/${encodeURIComponent(station.callsign)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            {station.callsign}
+          </a>
+        </h1>
         <p className="text-gray-600 mt-2">
           {station.qsoCount} QSO{station.qsoCount !== 1 ? 's' : ''}
         </p>
