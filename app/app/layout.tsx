@@ -90,8 +90,8 @@ export default async function AppLayout({
 
         {/* Main content */}
         <main className="min-w-0">
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            {children}
+          <div className="rounded-2xl border bg-white shadow-sm min-w-0">
+            <div className="p-6 overflow-x-auto">{children}</div>
           </div>
         </main>
       </div>

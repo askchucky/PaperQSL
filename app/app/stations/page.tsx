@@ -234,12 +234,34 @@ export default function StationsPage() {
         </div>
       ) : (
         <>
-          <div className="border rounded overflow-hidden">
-            <table className="w-full">
+<div className="border rounded overflow-x-auto">
+  <table className="w-full min-w-[1100px]">
               <thead className="bg-gray-50">
                 <tr>
-                  <SortableHeader column="latestQsoDate">Last QSO</SortableHeader>
-                  <SortableHeader column="callsign">Callsign</SortableHeader>
+                  <th
+                    className="sticky left-0 z-30 w-[160px] bg-gray-50 px-4 py-3 text-left text-sm font-semibold"
+                  >
+                    <div className="cursor-pointer select-none" onClick={() => handleSort('latestQsoDate')}>
+                      <div className="flex items-center gap-1">
+                        Last QSO
+                        {sortBy === 'latestQsoDate' && (
+                          <span className="text-gray-500">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </div>
+                  </th>
+                  <th
+                    className="sticky left-[160px] z-30 w-[180px] bg-gray-50 px-4 py-3 text-left text-sm font-semibold"
+                  >
+                    <div className="cursor-pointer select-none" onClick={() => handleSort('callsign')}>
+                      <div className="flex items-center gap-1">
+                        Callsign
+                        {sortBy === 'callsign' && (
+                          <span className="text-gray-500">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </div>
+                  </th>
                   <SortableHeader column="qsoCount">QSOs</SortableHeader>
                   <SortableHeader column="sourceFile">Log File</SortableHeader>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Eligibility</th>
@@ -249,7 +271,9 @@ export default function StationsPage() {
                   <SortableHeader column="receivedAt">Received</SortableHeader>
                   <SortableHeader column="potaActivation">POTA Activation</SortableHeader>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Exported</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                  <th className="sticky right-0 z-30 w-[110px] bg-gray-50 px-4 py-3 text-left text-sm font-semibold">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -263,8 +287,8 @@ export default function StationsPage() {
                   }
 
                   return (
-                    <tr key={station.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                    <tr key={station.id} className="group hover:bg-gray-50">
+                      <td className="sticky left-0 z-20 w-[160px] bg-white px-4 py-3 text-sm text-gray-600 group-hover:bg-gray-50">
                         {station.latestQsoDate ? (
                           <div>
                             <div>
@@ -280,7 +304,7 @@ export default function StationsPage() {
                           '-'
                         )}
                       </td>
-                      <td className="px-4 py-3 font-mono font-semibold">
+                      <td className="sticky left-[160px] z-20 w-[180px] bg-white px-4 py-3 font-mono font-semibold group-hover:bg-gray-50">
                         <a
                           href={`https://www.qrz.com/db/${encodeURIComponent(
                             station.callsign
@@ -334,7 +358,7 @@ export default function StationsPage() {
                           '-'
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 z-20 w-[110px] bg-white px-4 py-3 group-hover:bg-gray-50">
                         <Link
                           href={`/app/stations/${encodeURIComponent(
                             station.callsign
