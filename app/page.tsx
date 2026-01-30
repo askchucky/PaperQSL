@@ -168,7 +168,7 @@ export default async function Home() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">QRZ Address Hydration</h3>
+                <h3 className="text-xl font-semibold mb-2">QRZ Address Updates</h3>
                 <p className="text-gray-600">
                   Automatically fetch mailing addresses from QRZ.com. One-click "Fill from QRZ"
                   button to populate station details including name, address, and QSL manager.
