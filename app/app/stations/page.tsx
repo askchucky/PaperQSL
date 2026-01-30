@@ -126,9 +126,9 @@ export default function StationsPage() {
       // Toggle sort order if clicking the same column
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
-      // Set new column and default to ascending
+      // Set new column. Default Last QSO to descending (most recent first), others ascending.
       setSortBy(column)
-      setSortOrder('asc')
+      setSortOrder(column === 'latestQsoDate' ? 'desc' : 'asc')
     }
     setPage(1) // Reset to first page when sorting changes
   }
