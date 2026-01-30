@@ -71,11 +71,22 @@ export async function GET(
       },
     })
 
+    // Lookup POTA park name if reference exists
+    let potaParkName: string | null = null
+    if (latestPotaQso?.myPotaRef) {
+      const potaPark = await prisma.potaList.findUnique({
+        where: { reference: latestPotaQso.myPotaRef },
+        select: { park_name: true },
+      })
+      potaParkName = potaPark?.park_name || null
+    }
+
     return NextResponse.json({
       station,
       qsos,
       sourceFiles: sourceFiles.map((sf) => sf.sourceFile).filter(Boolean) as string[],
       myPotaRef: latestPotaQso?.myPotaRef || null,
+      potaParkName,
     })
   } catch (error) {
     console.error('Error fetching station:', error)

@@ -28,6 +28,12 @@ interface Station {
   qslCardBackUrl: string | null
   qslCardFrontUploadedAt: Date | null
   qslCardBackUploadedAt: Date | null
+  qrzFirstName: string | null
+  qrzLastName: string | null
+  qrzNameRaw: string | null
+  lastExportedAt: Date | null
+  lastExportedLabel: string | null
+  exportCount: number
 }
 
 
@@ -63,6 +69,7 @@ export default function StationDetailPage() {
   const [qsos, setQsos] = useState<QSO[]>([])
   const [sourceFiles, setSourceFiles] = useState<string[]>([])
   const [myPotaRef, setMyPotaRef] = useState<string | null>(null)
+  const [potaParkName, setPotaParkName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [lookingUpQRZ, setLookingUpQRZ] = useState(false)
@@ -102,6 +109,7 @@ export default function StationDetailPage() {
         setQsos(data.qsos || [])
         setSourceFiles(data.sourceFiles || [])
         setMyPotaRef(data.myPotaRef || null)
+        setPotaParkName(data.potaParkName || null)
 
         // Populate form
         const s = data.station
@@ -159,7 +167,7 @@ export default function StationDetailPage() {
       if (response.ok) {
         await fetchStation()
         router.refresh()
-        alert('Station updated successfully!')
+        //alert('Station updated successfully!')
       } else {
         alert(`Error: ${data?.error || 'Failed to update'}`)
       }
@@ -252,9 +260,21 @@ export default function StationDetailPage() {
             {station.callsign}
           </a>
         </h1>
+        {(station.qrzFirstName || station.qrzLastName) && (
+          <p className="text-gray-600 mt-1">
+            Name: {[station.qrzFirstName, station.qrzLastName].filter(Boolean).join(' ')}
+          </p>
+        )}
         <p className="text-gray-600 mt-2">
           {station.qsoCount} QSO{station.qsoCount !== 1 ? 's' : ''}
         </p>
+        {station.lastExportedAt && (
+          <p className="text-gray-600 mt-1 text-sm">
+            Last exported: {format(new Date(station.lastExportedAt), 'MMM d, yyyy')}
+            {station.exportCount > 0 && ` (${station.exportCount} time${station.exportCount !== 1 ? 's' : ''})`}
+            {station.lastExportedLabel && ` - ${station.lastExportedLabel}`}
+          </p>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -496,7 +516,17 @@ export default function StationDetailPage() {
       {myPotaRef && (
         <div className="mt-6 border rounded p-6">
           <h2 className="text-xl font-semibold mb-2">From POTA Activation</h2>
-          <p className="text-sm text-gray-700">{myPotaRef}</p>
+          <p className="text-sm text-gray-700">
+            <a
+              href={`https://pota.app/#/park/${encodeURIComponent(myPotaRef)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {myPotaRef}
+              {potaParkName ? ` - ${potaParkName}` : ''}
+            </a>
+          </p>
         </div>
       )}
 

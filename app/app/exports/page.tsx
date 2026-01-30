@@ -26,10 +26,25 @@ export default function ExportsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [missingAddress, setMissingAddress] = useState(false)
   const [notSent, setNotSent] = useState(false)
+  const [sourceFileFilter, setSourceFileFilter] = useState('all')
+  const [sourceFiles, setSourceFiles] = useState<string[]>([])
 
   useEffect(() => {
     fetchExports()
+    fetchSourceFiles()
   }, [])
+
+  const fetchSourceFiles = async () => {
+    try {
+      const response = await fetch('/api/exports/source-files')
+      const data = await response.json()
+      if (response.ok) {
+        setSourceFiles(data.sourceFiles || [])
+      }
+    } catch (error) {
+      console.error('Error fetching source files:', error)
+    }
+  }
 
   const fetchExports = async () => {
     setLoading(true)
@@ -59,6 +74,7 @@ export default function ExportsPage() {
           status: statusFilter !== 'all' ? statusFilter : undefined,
           missingAddress,
           notSent,
+          sourceFile: sourceFileFilter !== 'all' ? sourceFileFilter : undefined,
         }),
       })
 
@@ -102,6 +118,7 @@ export default function ExportsPage() {
           status: statusFilter !== 'all' ? statusFilter : undefined,
           missingAddress,
           notSent,
+          sourceFile: sourceFileFilter !== 'all' ? sourceFileFilter : undefined,
         }),
       })
 
@@ -188,6 +205,19 @@ export default function ExportsPage() {
               />
               <span className="text-sm">Not Sent</span>
             </label>
+
+            <select
+              value={sourceFileFilter}
+              onChange={(e) => setSourceFileFilter(e.target.value)}
+              className="px-4 py-2 border rounded"
+            >
+              <option value="all">All Logs</option>
+              {sourceFiles.map((file) => (
+                <option key={file} value={file}>
+                  {file}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex gap-4">

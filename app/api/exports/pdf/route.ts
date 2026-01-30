@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       status,
       missingAddress,
       notSent,
+      sourceFile,
     } = body
 
     // Build where clause (same as stations API)
@@ -46,6 +47,29 @@ export async function POST(request: NextRequest) {
 
     if (status && status !== 'all') {
       where.status = status
+    }
+
+    // Filter by sourceFile if provided
+    let stationCallsigns: string[] | undefined
+    if (sourceFile) {
+      const qsosWithSourceFile = await prisma.qSO.findMany({
+        where: {
+          userId: user.id,
+          sourceFile: sourceFile,
+        },
+        select: {
+          callsign: true,
+        },
+        distinct: ['callsign'],
+      })
+      stationCallsigns = qsosWithSourceFile.map((q) => q.callsign)
+      if (stationCallsigns.length === 0) {
+        return NextResponse.json(
+          { error: 'No stations found matching source file filter' },
+          { status: 400 }
+        )
+      }
+      where.callsign = { in: stationCallsigns }
     }
 
     // Build OR conditions (ignore missingAddress filter for PDF since we need addresses)
@@ -74,6 +98,7 @@ export async function POST(request: NextRequest) {
       where,
       orderBy: { callsign: 'asc' },
       select: {
+        id: true,
         callsign: true,
         addressLine1: true,
         addressLine2: true,
@@ -107,6 +132,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Create export record
+    const exportLabel = `PDF Labels - ${new Date().toISOString().split('T')[0]}`
     const exportRecord = await prisma.export.create({
       data: {
         userId: user.id,
@@ -119,8 +145,22 @@ export async function POST(request: NextRequest) {
           status,
           missingAddress,
           notSent,
+          sourceFile,
         },
         recordCount: stations.length,
+      },
+    })
+
+    // Update export tracking on stations
+    const stationIds = stations.map((s) => s.id)
+    await prisma.station.updateMany({
+      where: {
+        id: { in: stationIds },
+      },
+      data: {
+        lastExportedAt: new Date(),
+        lastExportedLabel: exportLabel,
+        exportCount: { increment: 1 },
       },
     })
 

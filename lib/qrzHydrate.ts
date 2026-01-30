@@ -124,6 +124,36 @@ export async function hydrateStationFromQRZ({
       return { error: 'Callsign not found in QRZ' }
     }
 
+    // Parse name fields from QRZ data
+    const fname = (data as any).fname || ''
+    const nameRaw = (data as any).name || ''
+    
+    let firstName: string | null = null
+    let lastName: string | null = null
+    
+    if (fname) {
+      // If fname is provided, use it as firstName
+      firstName = fname.trim() || null
+    }
+    
+    if (nameRaw) {
+      const nameParts = nameRaw.trim().split(/\s+/).filter(Boolean)
+      if (nameParts.length > 0) {
+        // If we don't have firstName from fname, use first part of name
+        if (!firstName && nameParts.length > 0) {
+          firstName = nameParts[0] || null
+        }
+        // Last part is always lastName
+        if (nameParts.length > 1) {
+          lastName = nameParts[nameParts.length - 1] || null
+        } else if (nameParts.length === 1 && !fname) {
+          // If only one part and no fname, treat as lastName
+          lastName = nameParts[0] || null
+          firstName = null
+        }
+      }
+    }
+
     // Persist looked-up data onto the Station record
     try {
       const updatedStation = await prisma.station.upsert({
@@ -148,6 +178,9 @@ export async function hydrateStationFromQRZ({
           addressSource: 'QRZ',
           lastVerifiedAt: new Date(),
           qslManager: (data as any).qslmgr || null,
+          qrzFirstName: firstName,
+          qrzLastName: lastName,
+          qrzNameRaw: nameRaw || null,
         },
         update: {
           addressLine1: data.addr1 || null,
@@ -159,6 +192,9 @@ export async function hydrateStationFromQRZ({
           addressSource: 'QRZ',
           lastVerifiedAt: new Date(),
           qslManager: (data as any).qslmgr || null,
+          qrzFirstName: firstName,
+          qrzLastName: lastName,
+          qrzNameRaw: nameRaw || null,
         },
       })
 

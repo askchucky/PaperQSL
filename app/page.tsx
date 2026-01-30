@@ -1,7 +1,14 @@
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
+import { currentUser } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
-export default function Home() {
+export default async function Home() {
+  const user = await currentUser()
+  if (user) {
+    redirect('/app')
+  }
+  
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b">

@@ -17,6 +17,9 @@ interface Station {
   latestQsoTime: string | null
   sourceFile: string | null
   potaActivation: string | null
+  lastExportedAt: Date | null
+  lastExportedLabel: string | null
+  exportCount: number
 }
 
 export default function StationsPage() {
@@ -25,6 +28,7 @@ export default function StationsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [pageSize, setPageSize] = useState<number | 'all'>(50)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -42,10 +46,15 @@ export default function StationsPage() {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '50',
         sortBy: sortBy,
         sortOrder: sortOrder,
       })
+      
+      if (pageSize === 'all') {
+        params.append('limit', '100000')
+      } else {
+        params.append('limit', pageSize.toString())
+      }
 
       if (search) params.append('search', search)
       if (eligibilityFilter !== 'all') params.append('eligibility', eligibilityFilter)
@@ -70,7 +79,7 @@ export default function StationsPage() {
 
   useEffect(() => {
     fetchStations()
-  }, [page, eligibilityFilter, statusFilter, missingAddress, notSent, sortBy, sortOrder])
+  }, [page, eligibilityFilter, statusFilter, missingAddress, notSent, sortBy, sortOrder, pageSize])
 
   // Debounce search
   useEffect(() => {
@@ -239,6 +248,7 @@ export default function StationsPage() {
                   <SortableHeader column="sentAt">Sent</SortableHeader>
                   <SortableHeader column="receivedAt">Received</SortableHeader>
                   <SortableHeader column="potaActivation">POTA Activation</SortableHeader>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Exported</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -310,6 +320,20 @@ export default function StationsPage() {
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {station.potaActivation || '-'}
                       </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {station.lastExportedAt ? (
+                          <div>
+                            <div>{format(new Date(station.lastExportedAt), 'MMM d, yyyy')}</div>
+                            {station.exportCount > 0 && (
+                              <div className="text-xs text-gray-500">
+                                {station.exportCount} time{station.exportCount !== 1 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/app/stations/${encodeURIComponent(
@@ -328,27 +352,46 @@ export default function StationsPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex justify-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 border rounded disabled:opacity-50"
+          <div className="mt-6 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Rows:</label>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const newSize = e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10)
+                  setPageSize(newSize)
+                  setPage(1)
+                }}
+                className="px-3 py-1 border rounded text-sm"
               >
-                Previous
-              </button>
-              <span className="px-4 py-2">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-4 py-2 border rounded disabled:opacity-50"
-              >
-                Next
-              </button>
+                <option value="50">50</option>
+                <option value="75">75</option>
+                <option value="100">100</option>
+                <option value="all">All</option>
+              </select>
             </div>
-          )}
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 border rounded disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="px-4 py-2">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,88 +8,81 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  qsos      QSO[]
-  stations  Station[]
-  exports   Export[]
-  qrzUsername String?  // QRZ username
-  qrzPassword String?  // Encrypted QRZ password
-  qrzSessionKey          String?   // Cached QRZ session key (short-lived)
-  qrzSessionKeyUpdatedAt DateTime? // When the session key was last refreshed
+  id                     String    @id @default(cuid())
+  clerkId                String    @unique
+  email                  String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  qrzPassword            String?
+  qrzUsername            String?
+  qrzSessionKey          String?
+  qrzSessionKeyUpdatedAt DateTime?
+  exports                Export[]
+  qsos                   QSO[]
+  stations               Station[]
 
   @@index([clerkId])
 }
 
 model QSO {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  callsign  String
-  date      DateTime
-  time      String?
-  band      String?
-  mode      String?
-  freq      String?
-  rstSent   String?
-  rstRcvd   String?
-  qth       String?
-  comment   String?
-  adifData  Json?    // Store full ADIF record as JSON
-  sourceFile String? // Filename of the imported log file
-  myPotaRef  String? // MY_POTA_REF from ADIF
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  callsign   String
+  date       DateTime
+  time       String?
+  band       String?
+  mode       String?
+  freq       String?
+  rstSent    String?
+  rstRcvd    String?
+  qth        String?
+  comment    String?
+  adifData   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  myPotaRef  String?
+  sourceFile String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, callsign])
   @@index([userId, date])
 }
 
 model Station {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  callsign  String
-  qsoCount  Int      @default(0)
-
-  // Eligibility
-  eligibility String @default("Unknown") // Eligible | Not Eligible | Unknown
-  eligibilityOverride Boolean @default(false) // True if user manually set eligibility
-
-  // Address
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String?
-  addressSource String? // QRZ | HamQTH | Manual
-  lastVerifiedAt DateTime?
-
-  // QRZ Extras
-  qslManager   String?  // QRZ QSL manager (qslmgr)
-  qslCardImage String?  // URL to stored QSL card image (deprecated, use qslCardFrontUrl/BackUrl)
-  qslCardFrontUrl String? // URL to stored QSL card front image
-  qslCardBackUrl  String? // URL to stored QSL card back image
-  qslCardFrontUploadedAt DateTime? // When front image was uploaded
-  qslCardBackUploadedAt  DateTime? // When back image was uploaded
-
-  // QSL Lifecycle
-  sentAt      DateTime?
-  sentMethod  String? // Direct | SASE
-  receivedAt  DateTime?
-  notes       String?
-  status      String? // pending | sent | received | n/a
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  userId                 String
+  callsign               String
+  qsoCount               Int       @default(0)
+  eligibility            String    @default("Unknown")
+  eligibilityOverride    Boolean   @default(false)
+  addressLine1           String?
+  addressLine2           String?
+  city                   String?
+  state                  String?
+  postalCode             String?
+  country                String?
+  addressSource          String?
+  lastVerifiedAt         DateTime?
+  sentAt                 DateTime?
+  sentMethod             String?
+  receivedAt             DateTime?
+  notes                  String?
+  status                 String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  qslCardImage           String?
+  qslManager             String?
+  qslCardBackUploadedAt  DateTime?
+  qslCardBackUrl         String?
+  qslCardFrontUploadedAt DateTime?
+  qslCardFrontUrl        String?
+  qrzFirstName           String?
+  qrzLastName            String?
+  qrzNameRaw             String?
+  lastExportedAt         DateTime?
+  lastExportedLabel      String?
+  exportCount            Int       @default(0)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, callsign])
   @@index([userId, eligibility])
@@ -100,17 +90,26 @@ model Station {
 }
 
 model Export {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  type      String   // CSV | PDF
-  filename  String
-  blobUrl   String   // Vercel Blob URL
-  filters   Json?    // Store export filters as JSON
-  recordCount Int    @default(0)
-
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  filename    String
+  blobUrl     String
+  filters     Json?
+  recordCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model PotaList {
+  reference    String   @id @db.Char(10)
+  park_name    String?
+  latitude     Decimal? @db.Decimal(8, 6)
+  longitude    Decimal? @db.Decimal(9, 6)
+  grid         String?  @db.Char(6)
+  locationdesc String?
+
+  @@map("potalist")
 }

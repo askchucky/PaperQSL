@@ -146,6 +146,9 @@ export async function GET(request: NextRequest) {
         latestQsoTime: latestQso?.time || null,
         sourceFile: sourceFileDisplay,
         potaActivation: potaRef || null,
+        lastExportedAt: station.lastExportedAt,
+        lastExportedLabel: station.lastExportedLabel,
+        exportCount: station.exportCount,
       }
     })
 
@@ -241,14 +244,14 @@ export async function GET(request: NextRequest) {
     })
 
     // Apply pagination after sorting
-    const stations = sortedStations.slice(skip, skip + limit)
+    const paginatedStations = limit >= total ? sortedStations : sortedStations.slice(skip, skip + limit)
 
     return NextResponse.json({
-      stations,
+      stations: paginatedStations,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: limit >= total ? 1 : Math.ceil(total / limit),
     })
   } catch (error) {
     console.error('Error fetching stations:', error)
