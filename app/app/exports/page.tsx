@@ -151,10 +151,61 @@ export default function ExportsPage() {
         <h2 className="text-xl font-semibold mb-4">Export Stations</h2>
 
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Apply filters to export a subset of stations, or leave filters empty
-            to export all stations.
-          </p>
+          <div className="rounded-lg bg-blue-50 border border-blue-100 p-4">
+            <h3 className="text-sm font-semibold text-blue-900">How exports work</h3>
+            <p className="mt-1 text-sm text-blue-900/80">
+              Exports always start from your Stations list and apply the same filters shown below.
+              Use this page to generate either a CSV (for spreadsheets/label tools) or a PDF of Avery 5160 labels.
+            </p>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div>
+                <div className="text-xs font-semibold text-blue-900">What’s eligible?</div>
+                <ul className="mt-1 list-disc list-inside text-sm text-blue-900/80 space-y-1">
+                  <li>
+                    <span className="font-medium">CSV:</span> includes stations that match your filters (even if an address is missing).
+                  </li>
+                  <li>
+                    <span className="font-medium">PDF Labels:</span> includes stations that match your filters <span className="font-medium">and</span> have a complete mailing address.
+                  </li>
+                  <li>
+                    If you enable <span className="font-medium">Missing Address</span>, the PDF will typically produce fewer (or zero) labels because labels require an address.
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold text-blue-900">Tips</div>
+                <ul className="mt-1 list-disc list-inside text-sm text-blue-900/80 space-y-1">
+                  <li>Use <span className="font-medium">Not Sent</span> to focus on stations that still need a card.</li>
+                  <li>Use <span className="font-medium">All Logs</span> / a specific log file to export only stations from that import.</li>
+                  <li>After exporting, stations are marked as exported so you can track what you’ve already printed/sent.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div>
+                <div className="text-xs font-semibold text-blue-900">Recommended workflow</div>
+                <ol className="mt-1 list-decimal list-inside text-sm text-blue-900/80 space-y-1">
+                  <li><span className="font-medium">Import</span> your ADIF log.</li>
+                  <li><span className="font-medium">Review Stations</span> and filter to what you plan to send.</li>
+                  <li><span className="font-medium">Fill missing addresses</span> (use “Fill from QRZ” on Station details).</li>
+                  <li><span className="font-medium">Export PDF labels</span> (Avery 5160) or <span className="font-medium">Export CSV</span> for spreadsheets.</li>
+                </ol>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold text-blue-900">Why would a PDF produce 0 labels?</div>
+                <ul className="mt-1 list-disc list-inside text-sm text-blue-900/80 space-y-1">
+                  <li>The selected filters match stations, but <span className="font-medium">none have a complete mailing address</span>.</li>
+                  <li><span className="font-medium">Missing Address</span> is enabled (PDF labels require an address).</li>
+                  <li>The <span className="font-medium">Status</span> or <span className="font-medium">Not Sent</span> filters exclude everything.</li>
+                  <li>You selected a specific <span className="font-medium">Log File</span> that doesn’t include eligible stations.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <div className="flex gap-4 flex-wrap">
             <input
@@ -243,7 +294,9 @@ export default function ExportsPage() {
             </Link>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            PDF labels are formatted for Avery 5160 (30 labels per sheet, 8.5" x 11"). Only stations with complete addresses will be included.
+            PDF labels are formatted for Avery 5160 (30 labels per sheet, 8.5&quot; x 11&quot;).
+            PDF exports include only stations with complete mailing addresses.
+            CSV exports include all stations that match your filters.
           </p>
         </div>
       </div>
