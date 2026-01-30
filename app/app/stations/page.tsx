@@ -83,6 +83,7 @@ export default function StationsPage() {
     }, 500)
 
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
   const getEligibilityBadge = (eligibility: string) => {
@@ -123,17 +124,21 @@ export default function StationsPage() {
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
-      // Toggle sort order if clicking the same column
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
-      // Set new column. Default Last QSO to descending (most recent first), others ascending.
       setSortBy(column)
       setSortOrder(column === 'latestQsoDate' ? 'desc' : 'asc')
     }
-    setPage(1) // Reset to first page when sorting changes
+    setPage(1)
   }
 
-  const SortableHeader = ({ column, children }: { column: string; children: React.ReactNode }) => {
+  const SortableHeader = ({
+    column,
+    children,
+  }: {
+    column: string
+    children: React.ReactNode
+  }) => {
     const isActive = sortBy === column
     return (
       <th
@@ -143,9 +148,7 @@ export default function StationsPage() {
         <div className="flex items-center gap-1">
           {children}
           {isActive && (
-            <span className="text-gray-500">
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </span>
+            <span className="text-gray-500">{sortOrder === 'asc' ? '↑' : '↓'}</span>
           )}
         </div>
       </th>
@@ -156,9 +159,7 @@ export default function StationsPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Stations</h1>
-        <div className="text-sm text-gray-600">
-          Total: {total} stations
-        </div>
+        <div className="text-sm text-gray-600">Total: {total} stations</div>
       </div>
 
       {/* Filters */}
@@ -231,7 +232,7 @@ export default function StationsPage() {
                   <SortableHeader column="latestQsoDate">Last QSO</SortableHeader>
                   <SortableHeader column="callsign">Callsign</SortableHeader>
                   <SortableHeader column="qsoCount">QSOs</SortableHeader>
-                  <SortableHeader column="sourceFile">Source File</SortableHeader>
+                  <SortableHeader column="sourceFile">Log File</SortableHeader>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Eligibility</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Address</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
@@ -256,7 +257,9 @@ export default function StationsPage() {
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {station.latestQsoDate ? (
                           <div>
-                            <div>{format(new Date(station.latestQsoDate), 'MMM d, yyyy')}</div>
+                            <div>
+                              {format(new Date(station.latestQsoDate), 'MMM d, yyyy')}
+                            </div>
                             {station.latestQsoTime && (
                               <div className="text-xs text-gray-500">
                                 {formatUtcTime(station.latestQsoTime)}
@@ -269,7 +272,9 @@ export default function StationsPage() {
                       </td>
                       <td className="px-4 py-3 font-mono font-semibold">
                         <a
-                          href={`https://www.qrz.com/db/${encodeURIComponent(station.callsign)}`}
+                          href={`https://www.qrz.com/db/${encodeURIComponent(
+                            station.callsign
+                          )}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 hover:underline"
@@ -291,9 +296,7 @@ export default function StationsPage() {
                           <span className="text-red-600">✗</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        {getStatusBadge(station.status)}
-                      </td>
+                      <td className="px-4 py-3">{getStatusBadge(station.status)}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {station.sentAt
                           ? format(new Date(station.sentAt), 'MMM d, yyyy')
@@ -309,7 +312,9 @@ export default function StationsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Link
-                          href={`/app/stations/${encodeURIComponent(station.callsign)}`}
+                          href={`/app/stations/${encodeURIComponent(
+                            station.callsign
+                          )}`}
                           className="text-blue-600 hover:text-blue-800 text-sm"
                         >
                           View

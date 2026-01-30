@@ -150,18 +150,66 @@ export async function GET(request: NextRequest) {
     })
 
     // Sort enriched stations
+    const toUtcTimestamp = (d: Date | null, t: string | null) => {
+      if (!d) return null
+
+      // If the stored Date already includes time, this will already be correct.
+      // If older records stored only a date (midnight) and have a separate HHmm time,
+      // combine them into a UTC timestamp for accurate sorting.
+      const base = new Date(d)
+      const hasMidnightTime =
+        base.getUTCHours() === 0 &&
+        base.getUTCMinutes() === 0 &&
+        base.getUTCSeconds() === 0 &&
+        base.getUTCMilliseconds() === 0
+
+      if (hasMidnightTime && t) {
+        const digits = t.replace(/[^0-9]/g, '')
+        const padded = digits.padStart(4, '0').slice(0, 4)
+        const hh = Number(padded.slice(0, 2))
+        const mm = Number(padded.slice(2, 4))
+        if (Number.isFinite(hh) && Number.isFinite(mm)) {
+          return Date.UTC(
+            base.getUTCFullYear(),
+            base.getUTCMonth(),
+            base.getUTCDate(),
+            hh,
+            mm,
+            0,
+            0
+          )
+        }
+      }
+
+      return base.getTime()
+    }
+
+    const compareNullable = (aVal: any, bVal: any) => {
+      const aNull = aVal === null || aVal === undefined || aVal === ''
+      const bNull = bVal === null || bVal === undefined || bVal === ''
+      if (aNull && bNull) return 0
+      if (aNull) return 1 // null/empty last
+      if (bNull) return -1
+
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return aVal - bVal
+      }
+
+      return String(aVal).localeCompare(String(bVal))
+    }
+
     const sortedStations = [...enrichedStations].sort((a, b) => {
       let aValue: any
       let bValue: any
 
       switch (sortBy) {
         case 'latestQsoDate':
-          aValue = a.latestQsoDate ? new Date(a.latestQsoDate).getTime() : 0
-          bValue = b.latestQsoDate ? new Date(b.latestQsoDate).getTime() : 0
+          aValue = toUtcTimestamp(a.latestQsoDate, a.latestQsoTime)
+          bValue = toUtcTimestamp(b.latestQsoDate, b.latestQsoTime)
           break
         case 'callsign':
-          aValue = a.callsign.toUpperCase()
-          bValue = b.callsign.toUpperCase()
+          aValue = a.callsign?.toUpperCase() || ''
+          bValue = b.callsign?.toUpperCase() || ''
           break
         case 'qsoCount':
           aValue = a.qsoCount
@@ -172,32 +220,31 @@ export async function GET(request: NextRequest) {
           bValue = b.sourceFile || ''
           break
         case 'sentAt':
-          aValue = a.sentAt ? new Date(a.sentAt).getTime() : 0
-          bValue = b.sentAt ? new Date(b.sentAt).getTime() : 0
+          aValue = a.sentAt ? new Date(a.sentAt).getTime() : null
+          bValue = b.sentAt ? new Date(b.sentAt).getTime() : null
           break
         case 'receivedAt':
-          aValue = a.receivedAt ? new Date(a.receivedAt).getTime() : 0
-          bValue = b.receivedAt ? new Date(b.receivedAt).getTime() : 0
+          aValue = a.receivedAt ? new Date(a.receivedAt).getTime() : null
+          bValue = b.receivedAt ? new Date(b.receivedAt).getTime() : null
           break
         case 'potaActivation':
           aValue = a.potaActivation || ''
           bValue = b.potaActivation || ''
           break
         default:
-          aValue = a.latestQsoDate ? new Date(a.latestQsoDate).getTime() : 0
-          bValue = b.latestQsoDate ? new Date(b.latestQsoDate).getTime() : 0
+          aValue = toUtcTimestamp(a.latestQsoDate, a.latestQsoTime)
+          bValue = toUtcTimestamp(b.latestQsoDate, b.latestQsoTime)
       }
 
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
-      return 0
+      const cmp = compareNullable(aValue, bValue)
+      return sortOrder === 'asc' ? cmp : -cmp
     })
 
     // Apply pagination after sorting
     const stations = sortedStations.slice(skip, skip + limit)
 
     return NextResponse.json({
-      stations: enrichedStations,
+      stations,
       total,
       page,
       limit,
