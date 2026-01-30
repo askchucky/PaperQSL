@@ -55,13 +55,36 @@ export async function POST(request: Request) {
       // Count QSOs per callsign
       callsignMap.set(callsign, (callsignMap.get(callsign) || 0) + 1)
 
-      // Parse date
+      // Parse date + time (UTC) into a single Date
       const dateStr = record.QSO_DATE || record.DATE_ON || ''
-      const date = parseADIFDate(dateStr) || new Date()
-
-      // Parse time
       const timeStr = record.TIME_ON || record.TIME || ''
-      const time = parseADIFTime(timeStr)
+
+      const parsedDate = parseADIFDate(dateStr)
+      const parsedTime = parseADIFTime(timeStr) // expected "HHmm" (or null)
+
+      let date: Date
+      if (parsedDate) {
+        // Build a UTC Date using the ADIF date + time (treat missing time as 00:00)
+        const hh = parsedTime ? Number(parsedTime.slice(0, 2)) : 0
+        const mm = parsedTime ? Number(parsedTime.slice(2, 4)) : 0
+
+        date = new Date(
+          Date.UTC(
+            parsedDate.getUTCFullYear(),
+            parsedDate.getUTCMonth(),
+            parsedDate.getUTCDate(),
+            Number.isFinite(hh) ? hh : 0,
+            Number.isFinite(mm) ? mm : 0,
+            0,
+            0
+          )
+        )
+      } else {
+        date = new Date()
+      }
+
+      // Keep the separate time field too (optional but helpful for UI)
+      const time = parsedTime
 
       // Create QSO record
       qsosToCreate.push({
