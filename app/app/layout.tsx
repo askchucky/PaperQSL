@@ -1,82 +1,112 @@
+import { currentUser } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { UserButton } from '@clerk/nextjs'
+import Image from 'next/image'
 
-export const metadata = {
-  title: 'Changelog • PaperQSL',
-}
-
-type ChangeItem = {
-  date: string
-  title: string
-  body: string[]
-}
-
-const CHANGELOG: ChangeItem[] = [
-  {
-    date: '2026-01-30',
-    title: 'POTA lookup, export tracking, and QRZ name capture',
-    body: [
-      'Stations list supports paging and row-size selection (50/75/100/All).',
-      'Station details show POTA activation as a link with park name from the POTA list (when available).',
-      'QRZ hydration now stores first/last name when available.',
-      'Exports can be filtered by log file name, and stations track last exported time and count.',
-    ],
-  },
+const navItems = [
+  { href: '/app', label: 'Dashboard' },
+  { href: '/app/import', label: 'Import' },
+  { href: '/app/stations', label: 'Stations' },
+  { href: '/app/exports', label: 'Exports' },
+  { href: '/app/changelog', label: 'Changelog' },
+  { href: '/app/settings/integrations', label: 'Settings' },
+  { href: '/app/settings/support', label: 'Support' },
 ]
 
-export default function ChangelogPage() {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const user = await currentUser()
+  if (!user) redirect('/')
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Changelog</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            What’s new in PaperQSL. Updates are listed newest first.
-          </p>
-        </div>
-
-        <Link
-          href="/app"
-          className="rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          ← Back to Dashboard
-        </Link>
-      </div>
-
-      <div className="rounded-2xl border bg-white p-5">
-        <h2 className="text-base font-semibold">Recommended workflow</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-gray-700">
-          <li>Import an ADIF log.</li>
-          <li>Review stations and fill any missing address info.</li>
-          <li>Verify eligibility (and fix any edge cases).</li>
-          <li>Export PDF labels or CSV.</li>
-        </ol>
-      </div>
-
-      <div className="space-y-6">
-        {CHANGELOG.map((item) => (
-          <article key={item.date} className="rounded-2xl border bg-white p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold">{item.title}</h2>
-              <span className="text-sm text-gray-500">{item.date}</span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 border-b bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+          <Link href="/app" className="flex items-center gap-3">
+            <Image
+              src="/img/paperqsl_logo.png"
+              alt="PaperQSL"
+              width={36}
+              height={36}
+              className="rounded"
+              priority
+            />
+            <div className="leading-tight">
+              <div className="text-base font-semibold text-gray-900">
+                PaperQSL
+              </div>
+              <div className="text-xs text-gray-500">Manager</div>
             </div>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-gray-700">
-              {item.body.map((line, idx) => (
-                <li key={idx}>{line}</li>
-              ))}
-            </ul>
-          </article>
-        ))}
-      </div>
-
-      <div className="rounded-2xl border bg-white p-5">
-        <h2 className="text-base font-semibold">Questions?</h2>
-        <p className="mt-2 text-sm text-gray-700">
-          If you run into an issue after an update, check{' '}
-          <Link href="/app/settings/support" className="text-blue-600 hover:underline">
-            Support
           </Link>
-          .
-        </p>
+
+          {/* Mobile menu */}
+          <div className="flex items-center gap-3 md:hidden">
+            <details className="relative">
+              <summary className="cursor-pointer list-none rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                Menu
+              </summary>
+              <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border bg-white shadow-lg">
+                <div className="p-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </details>
+            <UserButton />
+          </div>
+
+          {/* Desktop user button */}
+          <div className="hidden md:block">
+            <UserButton />
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-[240px_1fr]">
+        {/* Sidebar */}
+        <aside className="hidden md:block">
+          <div className="sticky top-[72px] rounded-2xl border bg-white p-3 shadow-sm">
+            <nav className="space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="mt-4 rounded-xl bg-gray-50 p-3">
+              <div className="text-xs font-medium text-gray-600">
+                Signed in as
+              </div>
+              <div className="mt-1 truncate text-sm text-gray-900">
+                {user.emailAddresses?.[0]?.emailAddress ?? 'User'}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="min-w-0">
+          <div className="rounded-2xl border bg-white p-6 shadow-sm">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   )
